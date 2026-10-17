@@ -24,8 +24,7 @@ test('Express starts, exposes its health endpoint, and protects customer routes'
       PORT: String(port),
       NODE_ENV: 'test',
       CLIENT_URL: baseUrl,
-      SESSION_SECRET: randomBytes(48).toString('hex'),
-      DATABASE_URL: 'mysql://ditz:ditz@127.0.0.1:1/ditz_store',
+      SESSION_SECRET: randomBytes(48).toString('hex'),            DATABASE_URL: 'postgresql://127.0.0.1:1/ditz_store?schema=public',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

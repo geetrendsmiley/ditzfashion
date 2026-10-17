@@ -13,22 +13,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: ditz_store
-          MYSQL_USER: ditz
-          MYSQL_PASSWORD: ditz
+          POSTGRES_DB: ditz_store
+          POSTGRES_USER: ditz
+          POSTGRES_PASSWORD: ditz
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uditz -pditz"
+          --health-cmd="pg_isready -U ditz -d ditz_store"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
     env:
-      DATABASE_URL: mysql://ditz:ditz@127.0.0.1:3306/ditz_store
+      DATABASE_URL: postgresql://ditz:ditz@127.0.0.1:5432/ditz_store?schema=public
       SESSION_SECRET: ci-only-random-test-secret-long-enough-for-local-validation
       NODE_ENV: test
     steps:
@@ -43,10 +42,10 @@ jobs:
         run: npm ci
       - name: Generate the database client
         run: npm run db:generate
-      - name: Validate the MySQL schema
+      - name: Validate the PostgreSQL schema
         run: npm run db:validate
-      - name: Create test database tables
-        run: npm run db:push
+      - name: Apply database migrations
+        run: npm run db:migrate:deploy
       - name: Seed example catalogue
         run: npm run db:seed
       - name: Run storefront pricing tests

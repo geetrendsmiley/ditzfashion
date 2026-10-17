@@ -37,7 +37,7 @@ async function waitForServer(baseUrl, child) {
 }
 
 test('customer accounts, saved addresses, country pricing, orders, and admin access', {
-  skip: !process.env.DATABASE_URL && 'Set DATABASE_URL to run MySQL API integration tests.',
+  skip: !process.env.DATABASE_URL && 'Set DATABASE_URL to run PostgreSQL API integration tests.',
   timeout: 45000,
 }, async () => {
   const port = await getAvailablePort();

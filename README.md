@@ -1,30 +1,30 @@
 # DITZ Fashion Store
 
-DITZ is a full-stack, JavaScript fashion store. It includes a React storefront, Node/Express API, MySQL data model, customer accounts, saved shipping addresses, product administration, order management, WhatsApp order handoff, and server-side Paystack checkout.
+DITZ is a full-stack, JavaScript fashion store. It includes a React storefront, Node/Express API, PostgreSQL data model with Prisma migrations, customer accounts, saved shipping addresses, product administration, order management, WhatsApp order handoff, and server-side Paystack checkout.
 
-GitHub stores and builds the source; it does not host the MySQL database or run the Express server. Deploy the app to a Node.js host and configure a persistent MySQL service before inviting customers to sign up or taking orders. GitHub Pages is not suitable for the account, database, admin, or payment features.
+GitHub stores and builds the source; it does not host the PostgreSQL database or run the Express server. Deploy the app to a Node.js host and configure a persistent PostgreSQL service before inviting customers to sign up or taking orders. GitHub Pages is not suitable for the account, database, admin, or payment features.
 
 ## Requirements
 
 - Node.js 20 or newer
-- MySQL 8 or a compatible managed MySQL service
+- PostgreSQL 14 or newer, or a compatible managed PostgreSQL service
 - A Paystack **test** secret key for online-checkout testing
 
 ## Local setup
 
-1. Create a MySQL database and a database user with access to it.
+1. Create a PostgreSQL database and a database user with access to it.
 2. Install dependencies:
 
    ```sh
    npm install
    ```
 
-3. Copy `.env.example` to `.env` and set `DATABASE_URL` to your MySQL connection string. Change `SESSION_SECRET` to a long, random value (at least 32 characters). Keep `.env` private; it is ignored by Git.
+3. Copy `.env.example` to `.env` and set `DATABASE_URL` to your local PostgreSQL connection string, for example `postgresql://<local-user>:<local-password>@localhost:5432/ditz_store?schema=public`. Create the database and local PostgreSQL user first. Change `SESSION_SECRET` to a long, random value (at least 32 characters). Keep `.env` private; it is ignored by Git.
 4. Create the tables and load the example clothing catalogue:
 
    ```sh
    npm run db:generate
-   npm run db:push
+   npm run db:migrate:deploy
    npm run db:seed
    ```
 
@@ -89,7 +89,7 @@ IP geolocation is only used as a country **suggestion**, never as a user identit
 
 See `.env.example`. Important settings:
 
-- `DATABASE_URL`: private MySQL connection string.
+- `DATABASE_URL`: private PostgreSQL connection string.
 - `SESSION_SECRET`: long random server-only signing secret.
 - `CLIENT_URL`: exact public origin (required in production and used for origin checks).
 - `PAYSTACK_SECRET_KEY`: server-only Paystack key; use `sk_test_...` during development.
@@ -99,6 +99,12 @@ See `.env.example`. Important settings:
 
 Never add database credentials, session secrets, or Paystack secret keys to frontend variables such as `VITE_*`, source control, or screenshots.
 
+## Local PostgreSQL and AWS DSQL
+
+Local development connects directly to PostgreSQL on `localhost:5432`. It does not need AWS credentials, an IAM policy, or a DSQL auth token. Set the local PostgreSQL username, password, and database in your ignored `.env`.
+
+AWS DSQL is a separate cloud database option. Its admin-connect token is short-lived (15 minutes), so do not save a generated token as a permanent `DATABASE_URL` password. The supplied AWS example uses the Node.js `pg` client directly; this application currently uses Prisma and is not yet wired to generate and refresh AWS DSQL tokens. Cloud use requires AWS SDK credentials with `dsql:DbConnectAdmin` permission and an AWS DSQL-compatible Prisma connection setup.
+
 ## GitHub and production deployment
 
 The workflow in `.github/workflows/ci.yml` installs locked dependencies, generates Prisma Client, runs pricing tests, checks server syntax, and builds the site on pushes and pull requests.
@@ -106,13 +112,13 @@ The workflow in `.github/workflows/ci.yml` installs locked dependencies, generat
 For production:
 
 1. Push the source to a GitHub repository.
-2. Create a persistent managed MySQL database and a Node.js 20+ host.
+2. Create a persistent managed PostgreSQL database and a Node.js 20+ host.
 3. Set environment variables on the host; never commit a production `.env`.
 4. Deploy with `npm ci`, `npm run db:generate`, and `npm run build`.
-5. Apply the schema to the production database as a reviewed deployment step; `npm run db:push` is convenient for initial setup, but use reviewed Prisma migrations for ongoing production changes.
+5. Apply committed migrations to the production database with `npm run db:migrate:deploy`. Create new migrations during development with `npm run db:migrate:dev -- --name descriptive_name`; review and commit the generated `prisma/migrations` files.
 6. Run the initial product seed only if you want the example catalogue. Create an admin through a secure interactive terminal.
 7. Register `https://YOUR-DOMAIN/api/webhooks/paystack` with Paystack, configure the callback URL, and verify the webhook in test mode.
 8. Attach your domain and HTTPS, then smoke-test account signup, address saving, WhatsApp order creation/cancellation, and test-mode Paystack verification.
 9. Switch to live Paystack credentials only after the test flows and launch checklist are approved.
 
-`npm run db:push` can change a database schema directly. Back up production data and review schema changes before applying them.
+This PostgreSQL migration project creates a new schema; it does not copy data from the previous MySQL database. Back up production data and review each migration before applying it.

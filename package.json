@@ -16,7 +16,9 @@
     "test": "node --test",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
-    "db:push": "prisma db push",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
     "db:seed": "node prisma/seed.js",
     "check:server": "node --check server/index.js && node --check server/create-admin.js && node --check prisma/seed.js",
     "admin:create": "node server/create-admin.js"
