@@ -1,0 +1,57 @@
+name: Build DITZ store
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ditz_store
+          MYSQL_USER: ditz
+          MYSQL_PASSWORD: ditz
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uditz -pditz"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: mysql://ditz:ditz@127.0.0.1:3306/ditz_store
+      SESSION_SECRET: ci-only-random-test-secret-long-enough-for-local-validation
+      NODE_ENV: test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate the database client
+        run: npm run db:generate
+      - name: Validate the MySQL schema
+        run: npm run db:validate
+      - name: Create test database tables
+        run: npm run db:push
+      - name: Seed example catalogue
+        run: npm run db:seed
+      - name: Run storefront pricing tests
+        run: npm test
+      - name: Check API and seed syntax
+        run: npm run check:server
+      - name: Build the storefront
+        run: npm run build

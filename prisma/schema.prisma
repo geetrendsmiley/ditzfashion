@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  WHATSAPP
+  PAYSTACK
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique @db.VarChar(254)
+  username     String    @unique @db.VarChar(32)
+  passwordHash String    @db.VarChar(255)
+  role         UserRole  @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  addresses    Address[]
+  orders       Order[]
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String   @default("Shipping") @db.VarChar(80)
+  recipient  String   @db.VarChar(120)
+  phone      String   @db.VarChar(32)
+  address    String   @db.VarChar(500)
+  city       String   @db.VarChar(120)
+  state      String   @db.VarChar(120)
+  country    String   @default("NG") @db.VarChar(2)
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@index([userId, isDefault])
+}
+
+model Product {
+  id             String         @id @default(cuid())
+  name           String         @unique @db.VarChar(160)
+  description    String         @db.Text
+  category       String         @db.VarChar(80)
+  color          String         @db.VarChar(60)
+  colorCode      String         @default("#dedbd2") @db.VarChar(7)
+  image          String         @db.VarChar(2048)
+  imageAlt       String         @default("") @db.VarChar(240)
+  sizes          Json
+  priceMinor     Int
+  compareAtMinor Int?
+  stock          Int            @default(0)
+  tag            String         @default("") @db.VarChar(40)
+  isNewArrival   Boolean        @default(false)
+  isActive       Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  countryPrices  CountryPrice[]
+  orderItems     OrderItem[]
+
+  @@index([isActive, isNewArrival, sortOrder])
+  @@index([category])
+}
+
+model CountryPrice {
+  id          String  @id @default(cuid())
+  productId   String
+  countryCode String  @db.VarChar(2)
+  currency    String  @db.VarChar(3)
+  amountMinor Int
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, countryCode])
+  @@index([countryCode])
+}
+
+model Order {
+  id                 String        @id @default(cuid())
+  orderNumber        String        @unique @db.VarChar(40)
+  userId             String?
+  addressId          String?
+  customerName       String        @db.VarChar(120)
+  customerEmail      String        @db.VarChar(254)
+  customerPhone      String        @db.VarChar(32)
+  shippingAddress    String        @db.VarChar(500)
+  shippingCity       String        @db.VarChar(120)
+  shippingState      String        @db.VarChar(120)
+  shippingCountry    String        @db.VarChar(2)
+  countryCode        String        @db.VarChar(2)
+  currency           String        @db.VarChar(3)
+  subtotalMinor      Int
+  status             OrderStatus   @default(PENDING)
+  paymentStatus      PaymentStatus @default(UNPAID)
+  paymentMethod      PaymentMethod
+  paystackReference  String?       @unique @db.VarChar(120)
+  paymentAccessCode  String?       @db.VarChar(120)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  address            Address?      @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+
+  @@index([userId, createdAt])
+  @@index([status, paymentStatus])
+}
+
+model OrderItem {
+  id                String  @id @default(cuid())
+  orderId           String
+  productId         String?
+  productName       String  @db.VarChar(160)
+  productImage      String  @db.VarChar(2048)
+  skuDescription    String  @db.VarChar(120)
+  unitPriceMinor    Int
+  quantity          Int
+  order             Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
